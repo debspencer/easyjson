@@ -862,12 +862,48 @@ func (r *Lexer) Int16() int16 {
 	return int16(n)
 }
 
+// func (r *Lexer) Int32() int32 {
+// 	s := r.number()
+// 	if !r.Ok() {
+// 		return 0
+// 	}
+
+// 	n, err := strconv.ParseInt(s, 10, 32)
+// 	if err != nil {
+// 		r.addNonfatalError(&LexerError{
+// 			Offset: r.start,
+// 			Reason: err.Error(),
+// 			Data:   s,
+// 		})
+// 	}
+// 	return int32(n)
+// }
 func (r *Lexer) Int32() int32 {
-	s := r.number()
+	if r.token.kind == TokenUndef && r.Ok() {
+		r.FetchToken()
+	}
 	if !r.Ok() {
+		r.errInvalidToken("int32")
 		return 0
 	}
 
+	var s string
+	switch r.token.kind {
+	case TokenString:
+		s := r.String()
+		switch s {
+		case "null", "undefined":
+			s = "0"
+		}
+	case TokenNumber:
+		s = string(r.Raw())
+	case TokenNull:
+		r.Null()
+		return 0
+	default:
+		r.errSyntax()
+		return 0
+	}
 	n, err := strconv.ParseInt(s, 10, 32)
 	if err != nil {
 		r.addNonfatalError(&LexerError{
